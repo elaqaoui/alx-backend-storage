@@ -1,34 +1,39 @@
 #!/usr/bin/env python3
-""" expiring web cache module """
 
-import redis
-import requests
-from typing import Callable
 from functools import wraps
+import redis
+from requests import get
+from typing import Callable
 
-redis = redis.Redis()
+
+redis_client = redis.Redis()
 
 
-def wrap_requests(fn: Callable) -> Callable:
-    """ Decorator wrapper """
-
+def responsed_cached_or_not(fn: Callable) -> Callable:
+    """
+    A simple decorator to cache a http request in redis
+    """
     @wraps(fn)
     def wrapper(url):
-        """ Wrapper for decorator guy """
-        redis.incr(f"count:{url}")
-        cached_response = redis.get(f"cached:{url}")
+        """
+        The wrapper function which gets returned
+        by the decorator
+        """
+        redis_client.incr(f"count:{url}")
+        cached_response = redis_client.get(f"cached:{url}")
         if cached_response:
             return cached_response.decode('utf-8')
         result = fn(url)
-        redis.setex(f"cached:{url}", 10, result)
+        redis_client.setex(f"cached:{url}", 10, result)
         return result
 
     return wrapper
 
 
-@wrap_requests
+@responsed_cached_or_not
 def get_page(url: str) -> str:
-    """get page self descriptive
     """
-    response = requests.get(url)
-    return response.text
+    A simple function to make http requests
+    to a certain endpoint
+    """
+    return get(url).text
